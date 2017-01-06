@@ -1,47 +1,82 @@
 
 
 
+
 #include <SPI.h>
 #include "RF69.h"
 
-void config_Spi(void);
-void config_RF_69(void);
-void setMode(uint8_t state);
-void setFreq(void);
-void writeRegister(uint8_t adress,uint8_t value);
-void setBitR(uint8_t kbs);
+
+void setMode(uint8_t estado);
+void writeRegister(uint8_t adreslavePin,uint8_t value);
+uint8_t readRegister(uint8_t addreslavePin);
 void setModulation(uint8_t mod);
+void setOutputPower(uint8_t power);
+void setHighPowerSettings(void);
+void isr0(void);
+void isr1(void);
 
+//global variables
 
+uint8_t state;
 
+void initRF69(){
 
-
-void initRF69(void){
-  config_Spi();
-  SPI.begin();
-  config_RF_69();
-}
-
-void config_Spi(void)
-{
-  SPI.setClockDivider(SPI_CLOCK_DIV8); //2MHz in arduino uno
-  SPI.setDataMode(SPI_MODE0);
-  SPI.setBitOrder(MSBFIRST);
-}
-
-
-//set freq
-//set Idle
-//Fdev after
-//Bit Rate
-
-void config_RF_69(){
+//configurar spi
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+// slavePin
+  pinMode(slavePin, OUTPUT);
+// configurações
+  //Set Standby
   setMode(M_STDBY);
-  setFreq(); //depois colocar Fdev
-  //Fdev no inicio vai com o valor padrao mas depois colocar uma funçao
-  setBitR(2);
-  setModulation(FSK);
+  //Set Frequency 434MHz
+  writeRegister(RegFrfMsb,FrfMsb);
+  writeRegister(RegFrfMid,FrfMid);
+  writeRegister(RegFrfLsb,FrfLsb);
 
+  //Set BitRate
+  writeRegister(RegBitrateMsb,0x1A);
+  writeRegister(RegBitrateLsb,0x0B);
+
+  //Set modulation FSK
+  setModulation(MODE_FSK);
+
+  //Set OutputPower
+  setOutputPower(13);
+  // Turn off clckOUT
+  writeRegister(RegDioMapping2, CLK_OUT_FXOSC_OFF);
+
+  //atach interrupts
+  attachInterrupt(2,isr0,RISING);
+  attachInterrupt(3,isr1,RISING);
+
+
+
+}
+
+
+void setOutputPower(uint8_t power){
+  uint8_t Pout;
+
+  if(power <= 13)
+  {
+    Pout = (power + 18) & 0x1F;
+    writeRegister(RegPaLevel,PA0_ON | Pout);
+  }
+  else if(power > 13 && power <= 17){
+    Pout = (14 + power) & 0x1F ;
+    writeRegister(RegPaLevel, PA1_ON | PA2_ON | Pout);
+  }
+  else{
+    setHighPowerSettings();
+    Pout = (11 + power) & 0x1F;
+    writeRegister(RegPaLevel,PA1_ON | PA2_ON | Pout);
+  }
+}
+
+void setHighPowerSettings(void){
+  writeRegister(RegOcp, 0x0F);
+  writeRegister(RegTestPa1, 0x5D);
+  writeRegister(RegTestPa2,0x7C);
 }
 
 void setModulation(uint8_t mod){
@@ -56,38 +91,31 @@ void setModulation(uint8_t mod){
   }
 }
 
-void setBitR(uint8_t kbs){
-  writeRegister(RegBitrateMsb,0x1A);
-  writeRegister(RegBitrateLsb,0x0B);
-}
-
-
-void setFreq(){
-  writeRegister(RegFrfMsb,FrfMsb);
-  writeRegister(RegFrfMid,FrfMid);
-  writeRegister(RegFrfLsb,FrfLsb);
-}
-
-void setMode(uint8_t state){
+void setMode(uint8_t estado){
   //ler o estado
-  byte value = SPI.transfer(RegOpMode);
+  uint8_t value = readRegister(RegOpMode);
   value &= OPMODE_MODE_BITS;
 
-  switch(state){
+  switch(estado){
      case M_SLP: // SLEEP = DORMIR
       value |= SLEEP;
+      state = M_SLP;
       break;
      case M_STDBY:
       value |= STDBY;
+      state =M_STDBY;
       break;
      case M_FS:
      break;
       value |= FS;
+      state = M_FS;
      case M_TX:
       value |= TX;
+      state = M_TX;
       break;
      case M_RX:
       value |= RX;
+      state = M_RX;
      default:
       break;
     }
@@ -96,7 +124,25 @@ void setMode(uint8_t state){
 
 }
 
-void writeRegister(uint8_t adress,uint8_t value){
-  SPI.transfer(SPI_WRITE | adress);
+void writeRegister(uint8_t adreslavePin,uint8_t value){
+  digitalWrite(slavePin, LOW);
+  SPI.transfer(SPI_WRITE | adreslavePin);
   SPI.transfer(value);
+  digitalWrite(slavePin,HIGH);
+}
+
+uint8_t readRegister(uint8_t addreslavePin){
+  digitalWrite(slavePin, LOW);
+  SPI.transfer(addreslavePin & SPI_READ);
+  uint8_t value = SPI.transfer(RegFifo);
+  digitalWrite(slavePin,HIGH);
+  return value;
+}
+
+void isr0(){
+
+}
+
+void isr1(){
+
 }
