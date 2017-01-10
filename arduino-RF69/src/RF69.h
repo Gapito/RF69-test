@@ -17,7 +17,9 @@
 //Slave select
 #define slavePin 8
 
+const uint8_t syncword [] = {0x3d,0x5A};
 
+#define Payload 66 //bytes;
 
 
 //modulations types
@@ -25,6 +27,8 @@
 #define MODE_OOK 1
 
 void initRF69(void);
+
+void seTx(void);
 
 
 

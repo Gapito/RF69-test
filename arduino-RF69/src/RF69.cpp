@@ -14,9 +14,9 @@ void setOutputPower(uint8_t power);
 void setHighPowerSettings(void);
 void isr0(void);
 void isr1(void);
+void writeBurstRegiste(uint8_t adress, char *msg,uint8_t len);
 
 //global variables
-
 uint8_t state;
 
 void initRF69(){
@@ -44,16 +44,64 @@ void initRF69(){
   setOutputPower(13);
   // Turn off clckOUT
   writeRegister(RegDioMapping2, CLK_OUT_FXOSC_OFF);
-
+  //put interrupts then
   //atach interrupts
   attachInterrupt(2,isr0,RISING);
   attachInterrupt(3,isr1,RISING);
 
+// packet configuration
+
+//Size of preamble de 4 bits.
+writeRegister(RegPreambleLsb,4);
+
+//config sync - 2 bytes
+writeRegister(RegSyncConfig,SYNC_ON|SYNC_SIZE_2);
+
+//Set two bytes on syncword;
+writeRegister(RegSyncValue1,syncword[0]);
+writeRegister(RegSyncValue2,syncword[1]);
+
+//without NODE ADRESS filtering
+writeRegister(RegPacketConfig1, PACKET1_FORMAT_FIXED |PACKET1_DC_FREE_OFF|PACKET1_CRC_ON|PACKET1_ADDRS_FILTR_NODE);
+
+//length of paylaod 1 byte just to begin
+writeRegister(RegPayloadLength,0x40);
+
+}
+void setRx(void)
+{
+  
+}
+
+void seTx(char *msg,uint8_t len){
+  setMode(M_STDBY);
+  //see if module is ready
+  Serial.println("Ver se o modulo está rdy !");
+  while(readRegister(RegIrqFlags1)&& IRQ1_MODE_RDY == 0x00);
+  Serial.println("Ready!!!");
+
+  writeRegister(RegDioMapping1, DIO0_MAPPING_00);
+
+  writeBurstRegiste(RegFifo,msg,len);
+
+  setMode(M_TX);
 
 
 }
 
+void writeRegister(uint8_t adress, char* msg,uint8_t len)
+{
+  digitalWrite(slavePin, LOW);
+  SPI.transfer(SPI_WRITE | adress);
+  uint8_t i = 0;
+  for(; i<len ; i++)
+  {
+    SPI.transfer(*msg++);
+  }
 
+  digitalWrite(slavePin,HIGH);
+
+}
 void setOutputPower(uint8_t power){
   uint8_t Pout;
 
@@ -96,6 +144,9 @@ void setMode(uint8_t estado){
   uint8_t value = readRegister(RegOpMode);
   value &= OPMODE_MODE_BITS;
 
+if(estado == state)
+  return;
+
   switch(estado){
      case M_SLP: // SLEEP = DORMIR
       value |= SLEEP;
@@ -121,7 +172,7 @@ void setMode(uint8_t estado){
     }
 
     writeRegister(RegOpMode,value);
-
+    return;
 }
 
 void writeRegister(uint8_t adreslavePin,uint8_t value){
@@ -140,7 +191,11 @@ uint8_t readRegister(uint8_t addreslavePin){
 }
 
 void isr0(){
-
+  if(state == M_TX)
+  {
+    setMode(M_STDBY);
+    Serial.println("Packet Sent");
+  }
 }
 
 void isr1(){

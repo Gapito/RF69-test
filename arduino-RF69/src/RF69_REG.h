@@ -270,7 +270,7 @@
 
 //RegDioMapping
 
-#define DIO0_MAPPING_BITS 				 0xC0
+#define DIO0_MAPPING_BITS 			 0xC0
 #define DIO0_MAPPING_00				 	 0x00
 #define DIO0_MAPPING_01					 0x40
 #define DIO0_MAPPING_10					 0x80
@@ -353,10 +353,18 @@
 #define SYNC_SIZE_BITS		0x38
 #define SYNC_TOL_BITS		0x07
 
-
+#define SYNC_SIZE_1            0x00
+#define SYNC_SIZE_2            0x08
+#define SYNC_SIZE_3            0x10
+#define SYNC_SIZE_4            0x18  // Default
+#define SYNC_SIZE_5            0x20
+#define SYNC_SIZE_6            0x28
+#define SYNC_SIZE_7            0x30
+#define SYNC_SIZE_8            0x38
 //RegPacketConfig1
 
 #define PACKET1_FORMAT_VARIABLE		0x80
+#define PACKET1_FORMAT_FIXED 0x00
 #define PACKET1_DC_FREE_BITS		0x60
 #define PACKET1_DC_FREE_OFF			0x00
 #define PACKET1_DC_FREE_MANCH		0x20
