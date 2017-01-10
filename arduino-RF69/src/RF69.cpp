@@ -15,6 +15,7 @@ void setHighPowerSettings(void);
 void isr0(void);
 void isr1(void);
 void writeBurstRegiste(uint8_t adress, char *msg,uint8_t len);
+void readMessage(void);
 
 //global variables
 uint8_t state;
@@ -70,22 +71,33 @@ writeRegister(RegPayloadLength,0x40);
 }
 void setRx(void)
 {
-  
+  if(state != M_RX)
+  {
+    setMode(M_STDBY);
+
+    writeRegister(RegDioMapping1, DIO0_MAPPING_01); // Paylaod ready !?
+
+    setMode(M_RX);
+  }
+
+
 }
 
 void seTx(char *msg,uint8_t len){
-  setMode(M_STDBY);
-  //see if module is ready
-  Serial.println("Ver se o modulo está rdy !");
-  while(readRegister(RegIrqFlags1)&& IRQ1_MODE_RDY == 0x00);
-  Serial.println("Ready!!!");
+  if(state != M_TX)
+  {
+    setMode(M_STDBY);
+    //see if module is ready
+    Serial.println("Ver se o modulo está rdy !");
+    while(readRegister(RegIrqFlags1)&& IRQ1_MODE_RDY == 0x00);
+    Serial.println("Ready!!!");
 
-  writeRegister(RegDioMapping1, DIO0_MAPPING_00);
+    writeRegister(RegDioMapping1, DIO0_MAPPING_00);
 
-  writeBurstRegiste(RegFifo,msg,len);
+    writeBurstRegiste(RegFifo,msg,len);
 
-  setMode(M_TX);
-
+    setMode(M_TX);
+  }
 
 }
 
@@ -189,12 +201,32 @@ uint8_t readRegister(uint8_t addreslavePin){
   digitalWrite(slavePin,HIGH);
   return value;
 }
+void readMessage(void){
+  digitalWrite(slavePin, LOW);
+
+  SPI.transfer(RegFifo); //Reg fifo = 0x00 logo pede ja para a leitura
+
+  uint8_t i = 0;
+  for(  ; i<5 ; i++ )
+  {
+    Serial.println(SPI.transfer(RegFifo));
+  }
+
+  digitalWrite(slavePin,HIGH);
+  
+}
 
 void isr0(){
+  setMode(M_STDBY);
+
   if(state == M_TX)
   {
-    setMode(M_STDBY);
     Serial.println("Packet Sent");
+  }
+   if(state == M_RX)
+  {
+    readMessage();
+    Serial.println("Payload Ready !!!");
   }
 }
 
