@@ -28,7 +28,7 @@ const uint8_t syncword [] = {0x3d,0x5A};
 
 void initRF69(void);
 
-void seTx(void);
+void seTx(char * msg,uint8_t len);
 
 
 

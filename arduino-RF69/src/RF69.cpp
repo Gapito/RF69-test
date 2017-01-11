@@ -14,7 +14,7 @@ void setOutputPower(uint8_t power);
 void setHighPowerSettings(void);
 void isr0(void);
 void isr1(void);
-void writeBurstRegiste(uint8_t adress, char *msg,uint8_t len);
+void writeBurstRegister(uint8_t adress, char *msg,uint8_t len);
 void readMessage(void);
 
 //global variables
@@ -23,7 +23,10 @@ uint8_t state;
 void initRF69(){
 
 //configurar spi
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  SPI.begin();
+  SPI.setClockDivider(SPI_CLOCK_DIV8); //2MHz in arduino uno
+  SPI.setDataMode(SPI_MODE0);
+  SPI.setBitOrder(MSBFIRST);
 // slavePin
   pinMode(slavePin, OUTPUT);
 // configurações
@@ -41,13 +44,17 @@ void initRF69(){
   //Set modulation FSK
   setModulation(MODE_FSK);
 
+  //fifo Threshold
+  writeRegister(RegFifoTresh,(readRegister(RegFifoTresh)&0xEF)|0x80);
+
   //Set OutputPower
   setOutputPower(13);
   // Turn off clckOUT
   writeRegister(RegDioMapping2, CLK_OUT_FXOSC_OFF);
   //put interrupts then
   //atach interrupts
-  attachInterrupt(2,isr0,RISING);
+  interrupts();
+  attachInterrupt(digitalPinToInterrupt(2),isr0,RISING);
   attachInterrupt(3,isr1,RISING);
 
 // packet configuration
@@ -67,6 +74,8 @@ writeRegister(RegPacketConfig1, PACKET1_FORMAT_FIXED |PACKET1_DC_FREE_OFF|PACKET
 
 //length of paylaod 1 byte just to begin
 writeRegister(RegPayloadLength,0x40);
+
+Serial.println(readRegister(RegVersion));
 
 }
 void setRx(void)
@@ -94,14 +103,17 @@ void seTx(char *msg,uint8_t len){
 
     writeRegister(RegDioMapping1, DIO0_MAPPING_00);
 
-    writeBurstRegiste(RegFifo,msg,len);
+    writeBurstRegister(RegFifo,msg,len);
 
     setMode(M_TX);
+    Serial.println("A enviar");
+
+
   }
 
 }
 
-void writeRegister(uint8_t adress, char* msg,uint8_t len)
+void writeBurstRegister(uint8_t adress, char* msg,uint8_t len)
 {
   digitalWrite(slavePin, LOW);
   SPI.transfer(SPI_WRITE | adress);
@@ -209,15 +221,15 @@ void readMessage(void){
   uint8_t i = 0;
   for(  ; i<5 ; i++ )
   {
-    Serial.println(SPI.transfer(RegFifo));
+  Serial.println(SPI.transfer(RegFifo));;
   }
 
   digitalWrite(slavePin,HIGH);
-  
+
 }
 
 void isr0(){
-  setMode(M_STDBY);
+
 
   if(state == M_TX)
   {
@@ -228,6 +240,7 @@ void isr0(){
     readMessage();
     Serial.println("Payload Ready !!!");
   }
+    setMode(M_STDBY);
 }
 
 void isr1(){
