@@ -17,18 +17,20 @@
 //Slave select
 #define slavePin 8
 
-const uint8_t syncword [] = {0x3d,0x5A};
+const uint8_t syncword [] = {0x3D,0x5A};
 
+#define NETWORKID 99
 #define Payload 66 //bytes;
 
-
+void getMessage();
 //modulations types
 #define MODE_FSK 0
 #define MODE_OOK 1
 
 void initRF69(void);
 
-void seTx(char * msg,uint8_t len);
+void seTx(char msg[],uint8_t len);
+void setRx(void);
 
 
 

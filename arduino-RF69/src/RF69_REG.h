@@ -101,7 +101,7 @@
 //434MHz module pag.17	FRF = Fstep * Frf(23,0)	=> Frf = FRF(434MHz)/FSTEP
 
 #define FrfMsb				0x6C
-#define FrfMid 				0x80
+#define FrfMid 				0x40
 #define FrfLsb  			0x00
 
 //pagina 20 - bitrates ! FxOSC/BR = BitRate -> regBitRate
@@ -148,7 +148,7 @@
 #define LIS_ABOR 	0x20	//Listen abort
 #define OPMODE_MODE_BITS	 0xE3
 #define SLEEP 		0x00 	// Estados -- bits 4-2
-#define	STDBY 		0x04
+#define	STDBY 	0x04
 #define FS 			0x08
 #define TX 			0x0C
 #define RX 			0x10
